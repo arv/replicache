@@ -121,14 +121,25 @@ const emptySet: ReadonlySet<string> = new Set();
 export class Replicache<MD extends MutatorDefs = {}>
   implements ReadTransaction
 {
-  private _pullAuth: string;
-  private readonly _pullURL: string;
-  private _pushAuth: string;
-  private readonly _pushURL: string;
-  private readonly _name: string;
+  /** The URL to use when doing a pull request. */
+  pullURL: string;
+
+  /** The URL to use when doing a push request. */
+  pushURL: string;
+
+  /** The authorization token used when doing a pull request. */
+  pullAuth: string;
+  /** The authorization token used when doing a push request. */
+  pushAuth: string;
+
+  /** The name of the Replicache database. */
+  readonly name: string;
+
   private readonly _repmInvoker: Invoker;
   private readonly _useMemstore: boolean;
-  private readonly _schemaVersion: string = '';
+
+  /** The schema version of the data understood by this application. */
+  schemaVersion: string;
 
   private _closed = false;
   private _online = true;
@@ -175,8 +186,16 @@ export class Replicache<MD extends MutatorDefs = {}>
   pushDelay: number;
 
   private readonly _requestOptions: Required<RequestOptions>;
-  private readonly _puller: Puller;
-  private readonly _pusher: Pusher;
+
+  /**
+   * The function to use to pull data from the server.
+   */
+  puller: Puller;
+
+  /**
+   * The function to use to push data to the server.
+   */
+  pusher: Pusher;
 
   /** The maximimum number of connections to use for pushing. */
   pushMaxConnections: number;
@@ -243,19 +262,19 @@ export class Replicache<MD extends MutatorDefs = {}>
       pusher = defaultPusher,
       pushMaxConnections = 1,
     } = options;
-    this._pullAuth = pullAuth;
-    this._pullURL = pullURL;
-    this._pushAuth = pushAuth;
-    this._pushURL = pushURL;
-    this._name = name;
+    this.pullAuth = pullAuth;
+    this.pullURL = pullURL;
+    this.pushAuth = pushAuth;
+    this.pushURL = pushURL;
+    this.name = name;
     this._repmInvoker = new REPMWasmInvoker(wasmModule);
-    this._schemaVersion = schemaVersion;
+    this.schemaVersion = schemaVersion;
     this.pullInterval = pullInterval;
     this.pushDelay = pushDelay;
     this.pushMaxConnections = pushMaxConnections;
     this._useMemstore = useMemstore;
-    this._puller = puller;
-    this._pusher = pusher;
+    this.puller = puller;
+    this.pusher = pusher;
 
     // Use a promise-resolve pair so that we have a promise to use even before
     // we call the Open RPC.
@@ -294,15 +313,15 @@ export class Replicache<MD extends MutatorDefs = {}>
   private async _open(): Promise<OpenResponse> {
     // If we are currently closing a Replicache instance with the same name,
     // wait for it to finish closing.
-    await closingInstances.get(this._name);
+    await closingInstances.get(this.name);
 
-    const openResponse = await this._repmInvoker.invoke(this._name, RPC.Open, {
+    const openResponse = await this._repmInvoker.invoke(this.name, RPC.Open, {
       useMemstore: this._useMemstore,
     });
     this._openResolve(openResponse);
 
     if (hasBroadcastChannel) {
-      this._broadcastChannel = new BroadcastChannel(storageKeyName(this._name));
+      this._broadcastChannel = new BroadcastChannel(storageKeyName(this.name));
       this._broadcastChannel.onmessage = (e: MessageEvent<BroadcastData>) =>
         this._onBroadcastMessage(e.data);
     } else {
@@ -364,7 +383,7 @@ export class Replicache<MD extends MutatorDefs = {}>
   async close(): Promise<void> {
     this._closed = true;
     const p = this._invoke(RPC.Close);
-    closingInstances.set(this._name, p);
+    closingInstances.set(this.name, p);
 
     this._pullConnectionLoop.close();
     this._pushConnectionLoop.close();
@@ -383,7 +402,7 @@ export class Replicache<MD extends MutatorDefs = {}>
     this._subscriptions.clear();
 
     await p;
-    closingInstances.delete(this._name);
+    closingInstances.delete(this.name);
   }
 
   private async _getRoot(): Promise<string | undefined> {
@@ -396,7 +415,7 @@ export class Replicache<MD extends MutatorDefs = {}>
 
   private _onStorage = (e: StorageEvent) => {
     const {key, newValue} = e;
-    if (newValue && key === storageKeyName(this._name)) {
+    if (newValue && key === storageKeyName(this.name)) {
       const {root, changedKeys, index} = JSON.parse(
         newValue,
       ) as StorageBroadcastData;
@@ -447,7 +466,7 @@ export class Replicache<MD extends MutatorDefs = {}>
     } else {
       // local storage needs a string...
       const data = {root, changedKeys: [...changedKeys.entries()], index};
-      localStorage[storageKeyName(this._name)] = JSON.stringify(data);
+      localStorage[storageKeyName(this.name)] = JSON.stringify(data);
     }
   }
 
@@ -468,7 +487,7 @@ export class Replicache<MD extends MutatorDefs = {}>
     args?: JSONValue,
   ): Promise<JSONValue> => {
     await this._openResponse;
-    return await this._repmInvoker.invoke(this._name, rpc, args);
+    return await this._repmInvoker.invoke(this.name, rpc, args);
   };
 
   /** Get a single value from the database. */
@@ -685,10 +704,10 @@ export class Replicache<MD extends MutatorDefs = {}>
       try {
         this._changeSyncCounters(1, 0);
         pushResponse = await this._invoke(RPC.TryPush, {
-          pushURL: this._pushURL,
-          pushAuth: this._pushAuth,
-          schemaVersion: this._schemaVersion,
-          pusher: this._pusher,
+          pushURL: this.pushURL,
+          pushAuth: this.pushAuth,
+          schemaVersion: this.schemaVersion,
+          pusher: this.pusher,
         });
       } finally {
         this._changeSyncCounters(-1, 0);
@@ -700,7 +719,7 @@ export class Replicache<MD extends MutatorDefs = {}>
         const reauth = checkStatus(
           httpRequestInfo,
           'push',
-          this._pushURL,
+          this.pushURL,
           this._logger,
         );
 
@@ -714,7 +733,7 @@ export class Replicache<MD extends MutatorDefs = {}>
           }
           const pushAuth = await this.getPushAuth();
           if (pushAuth != null) {
-            this._pushAuth = pushAuth;
+            this.pushAuth = pushAuth;
             // Try again now instead of waiting for next push.
             return await this._invokePush(maxAuthTries - 1);
           }
@@ -750,10 +769,10 @@ export class Replicache<MD extends MutatorDefs = {}>
 
   protected async _beginPull(maxAuthTries: number): Promise<BeginPullResult> {
     const beginPullResponse = await this._invoke(RPC.BeginTryPull, {
-      pullAuth: this._pullAuth,
-      pullURL: this._pullURL,
-      schemaVersion: this._schemaVersion,
-      puller: this._puller,
+      pullAuth: this.pullAuth,
+      pullURL: this.pullURL,
+      schemaVersion: this.schemaVersion,
+      puller: this.puller,
     });
 
     const {httpRequestInfo, syncHead, requestID} = beginPullResponse;
@@ -761,7 +780,7 @@ export class Replicache<MD extends MutatorDefs = {}>
     const reauth = checkStatus(
       httpRequestInfo,
       'pull',
-      this._pullURL,
+      this.pullURL,
       this._logger,
     );
     if (reauth && this.getPullAuth) {
@@ -779,7 +798,7 @@ export class Replicache<MD extends MutatorDefs = {}>
         this._changeSyncCounters(0, 1);
       }
       if (pullAuth != null) {
-        this._pullAuth = pullAuth;
+        this.pullAuth = pullAuth;
         // Try again now instead of waiting for next pull.
         return await this._beginPull(maxAuthTries - 1);
       }
