@@ -6,7 +6,6 @@ export class ConnectionLoopDelegateImpl implements Logger {
   readonly rep: Replicache;
   readonly invokeSend: () => Promise<boolean>;
   readonly logger: Logger;
-  readonly maxConnections = 1;
 
   constructor(
     rep: Replicache,
@@ -44,6 +43,7 @@ export class PullDelegate
   implements ConnectionLoopDelegate
 {
   readonly debounceDelay = 0;
+  readonly maxConnections = 1;
 
   get watchdogTimer(): number | null {
     return this.rep.pullInterval;
@@ -56,6 +56,10 @@ export class PushDelegate
 {
   get debounceDelay(): number {
     return this.rep.pushDelay;
+  }
+
+  get maxConnections(): number {
+    return this.rep.pushMaxConnections;
   }
 
   watchdogTimer = null;

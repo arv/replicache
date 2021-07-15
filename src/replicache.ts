@@ -99,17 +99,17 @@ type MakeMutators<T extends MutatorDefs> = {
 };
 
 /**
- * Base options for [[PullOptions]] and [[PushOptions]]
+ * Options for pull and push request operations.
  */
 export interface RequestOptions {
   /**
-   * When there are pending pull or push requests this is the _minimum_ ammount
+   * When there are pending pull or push requests this is the _minimum_ amount
    * of time to wait until we try another pull/push.
    */
   minDelayMs?: number;
 
   /**
-   * When there are pending pull or push requests this is the _maximum_ ammount
+   * When there are pending pull or push requests this is the _maximum_ amount
    * of time to wait until we try another pull/push.
    */
   maxDelayMs?: number;
@@ -178,6 +178,9 @@ export class Replicache<MD extends MutatorDefs = {}>
   private readonly _puller: Puller;
   private readonly _pusher: Pusher;
 
+  /** The maximimum number of connections to use for pushing. */
+  pushMaxConnections: number;
+
   /**
    * The options used to control the [[pull]] and push request behavior. This
    * object is live so changes to it will affect the next pull or push call.
@@ -238,6 +241,7 @@ export class Replicache<MD extends MutatorDefs = {}>
       requestOptions = {},
       puller = defaultPuller,
       pusher = defaultPusher,
+      pushMaxConnections = 1,
     } = options;
     this._pullAuth = pullAuth;
     this._pullURL = pullURL;
@@ -248,6 +252,7 @@ export class Replicache<MD extends MutatorDefs = {}>
     this._schemaVersion = schemaVersion;
     this.pullInterval = pullInterval;
     this.pushDelay = pushDelay;
+    this.pushMaxConnections = pushMaxConnections;
     this._useMemstore = useMemstore;
     this._puller = puller;
     this._pusher = pusher;

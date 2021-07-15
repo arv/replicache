@@ -67,6 +67,14 @@ export interface ReplicacheOptions<MD extends MutatorDefs> {
   pushDelay?: number;
 
   /**
+   * The maximimum number of connections to use for pushing. If you are using
+   * HTTP1 make sure this is 1 because browsers are limited to 6 HTTP1
+   * connections to the same domain and you do not want to starve the
+   * connections to your server.
+   */
+  pushMaxConnections?: number;
+
+  /**
    * By default we will load the Replicache wasm module relative to the
    * Replicache js files but under some circumstances (like bundling with old
    * versions of Webpack) it is useful to manually configure where the wasm
