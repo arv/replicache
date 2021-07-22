@@ -58,5 +58,8 @@
     "out/replicache.mjs",
     "out/replicache.wasm",
     "out/replicache.dev.wasm"
-  ]
+  ],
+  "dependencies": {
+    "flatbuffers": "^2.0.3"
+  }
 }

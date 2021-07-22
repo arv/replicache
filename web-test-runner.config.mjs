@@ -19,7 +19,18 @@ export default {
   groups: [
     {
       name: 'Main',
-      files: 'src/{replicache,connection-loop,json,rwlock}.test.ts',
+      files: [
+        // All but worker.test.ts
+        'src/connection-loop.test.ts',
+        'src/json.test.ts',
+        'src/rw-lock.test.ts',
+        'src/hash.test.ts  ',
+        'src/replicache.test.ts',
+        'src/hash.test.ts',
+
+        'src/dag/*.test.ts',
+        'src/kv/*.test.ts',
+      ],
       browsers: [firefox, chromium, webkit],
     },
     {
