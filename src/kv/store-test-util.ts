@@ -1,5 +1,5 @@
 import {assert, expect} from '@esm-bundle/chai';
-import {Release, Store, WrapStore, Write} from './store';
+import {Store, WrapStore} from './store';
 
 export async function runAll(
   newStore: () => Promise<Store> | Store,

@@ -39,6 +39,7 @@ import {
 import {MemStore} from './kv/mem-store.js';
 import {IDBStore} from './kv/idb-store.js';
 import {WrapStore} from './kv/store.js';
+import {Store as DagStore} from './dag/store.js';
 
 type BeginPullResult = {
   requestID: string;
@@ -298,9 +299,12 @@ export class Replicache<MD extends MutatorDefs = {}>
       this._useMemstore ? new MemStore() : new IDBStore(this._name),
     );
 
+    const dag = new DagStore(store);
+
     const openResponse = await this._repmInvoker.invoke(this._name, RPC.Open, {
       useMemstore: this._useMemstore,
       store,
+      dag,
     });
     this._openResolve(openResponse);
 

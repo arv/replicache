@@ -1,6 +1,5 @@
 import {runAll} from './store-test-util.js';
 import {IDBStore} from './idb-store.js';
-import {deletaAllDatabases} from '../test-util.js';
 
 let c = 0;
 

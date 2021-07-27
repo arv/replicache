@@ -1,9 +1,6 @@
 import * as flatbuffers from 'flatbuffers';
 import {Hash} from '../hash.js';
-import {meta} from './meta_generated.js';
-
-const {Meta} = meta;
-type Meta = typeof Meta;
+import {Meta} from './meta_generated.js';
 
 export class Chunk {
   readonly hash: string;
@@ -59,13 +56,11 @@ export function createMeta(refs: string[]): Uint8Array | undefined {
   }
 
   const builder = new flatbuffers.Builder();
-  const refsOffset = meta.Meta.createRefsVector(
+  const refsOffset = Meta.createRefsVector(
     builder,
     refs.map(r => builder.createString(r)),
   );
-  meta.Meta.startMeta(builder);
-  meta.Meta.addRefs(builder, refsOffset);
-  const m = meta.Meta.endMeta(builder);
+  const m = Meta.createMeta(builder, refsOffset);
   builder.finish(m);
   return builder.asUint8Array();
 }
